@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LOCL — live. like. a local.</title>
+  <meta name="description" content="LOCL turns cities into immersive, real-time cultural experiences through AI itineraries and AR storytelling — so you can explore like a local." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --navy:#000a46;
+      --navy2:#00062f;
+      --ice:#e9f3ff;
+      --slate:#b6c7d6;
+      --muted:#94a9be;
+      --line:rgba(182,199,214,.18);
+      --shadow: 0 18px 40px rgba(0,0,0,.35);
+      --radius:18px;
+      --max:1120px;
+    }
+
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color:var(--ice);
+      background:
+        radial-gradient(900px 600px at 20% 5%, rgba(182,199,214,.14), transparent 60%),
+        radial-gradient(1100px 700px at 90% 20%, rgba(182,199,214,.09), transparent 60%),
+        linear-gradient(180deg, var(--navy2), var(--navy));
+      overflow-x:hidden;
+    }
+
+    body:before{
+      content:"";
+      position:fixed; inset:0;
+      background:
+        linear-gradient(to right, rgba(182,199,214,.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(182,199,214,.05) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(900px 600px at 30% 10%, rgba(0,0,0,1), transparent 70%);
+      pointer-events:none;
+      opacity:.35;
+    }
+
+    .wrap{max-width:var(--max); margin:0 auto; padding:22px}
+    a{color:inherit; text-decoration:none}
+
+    /* Floating accent blobs */
+    .blob{
+      position:absolute;
+      filter: blur(28px);
+      opacity:.35;
+      border-radius: 999px;
+      pointer-events:none;
+      mix-blend-mode: screen;
+      transform: translateZ(0);
+      animation: drift 18s ease-in-out infinite;
+    }
+    .blob.one{ width:380px; height:380px; background:rgba(182,199,214,.22); left:-120px; top:120px; }
+    .blob.two{ width:520px; height:520px; background:rgba(148,169,190,.16); right:-220px; top:520px; animation-duration: 22s; }
+    .blob.three{ width:340px; height:340px; background:rgba(182,199,214,.14); left:45%; top:980px; animation-duration: 26s; }
+    @keyframes drift{
+      0%,100%{ transform: translate(0,0) scale(1); }
+      50%{ transform: translate(18px,-22px) scale(1.05); }
+    }
+
+    header{
+      position:sticky; top:0; z-index:20;
+      backdrop-filter: blur(10px);
+      background: rgba(0,6,47,.55);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav{
+      max-width:var(--max); margin:0 auto; padding:12px 22px;
+      display:flex; align-items:center; justify-content:space-between; gap:16px;
+    }
+
+    /* text-only brand */
+    .brand{
+      display:flex;
+      flex-direction:column;
+      line-height:1.05;
+      min-width: 210px;
+    }
+    .brand .name{
+      font-family: "Playfair Display", ui-serif, Georgia, serif;
+      font-weight: 700;
+      letter-spacing:.8px;
+      font-size: 20px;
+    }
+    .brand .tag{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:4px;
+    }
+
+    .links{display:flex; gap:14px; flex-wrap:wrap; justify-content:flex-end}
+    .links a{
+      color:var(--muted);
+      font-size:14px;
+      padding:8px 10px;
+      border-radius: 999px;
+      border:1px solid transparent;
+    }
+    .links a:hover{
+      color:var(--ice);
+      border-color: rgba(182,199,214,.2);
+      background: rgba(255,255,255,.03);
+    }
+
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:12px 14px;
+      border-radius: 14px;
+      border:1px solid rgba(182,199,214,.22);
+      background: rgba(255,255,255,.05);
+      color: var(--ice);
+      font-weight: 700;
+      cursor:pointer;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease;
+      user-select:none;
+    }
+    .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.07); border-color: rgba(182,199,214,.32); }
+    .btn.primary{
+      border-color: rgba(233,243,255,.22);
+      background: linear-gradient(135deg, rgba(233,243,255,.20), rgba(182,199,214,.12));
+      box-shadow: 0 14px 28px rgba(0,0,0,.25);
+    }
+
+    .card{
+      border:1px solid var(--line);
+      background: rgba(8,14,46,.52);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    /* Scroll reveal */
+    .reveal{
+      opacity:0;
+      transform: translateY(14px);
+      transition: opacity .7s ease, transform .7s ease;
+      will-change: opacity, transform;
+    }
+    .reveal.show{
+      opacity:1;
+      transform: translateY(0);
+    }
+
+    /* ✅ HERO = SINGLE COLUMN (NO RIGHT BOX) */
+    .hero{
+      padding:34px 0 18px;
+      display:block;              /* <- changed from grid */
+    }
+
+    .heroLeft{ padding:24px; position:relative; overflow:hidden; }
+    .heroLeft:after{
+      content:"";
+      position:absolute; inset:-2px;
+      background: radial-gradient(600px 300px at 20% 0%, rgba(233,243,255,.08), transparent 65%);
+      pointer-events:none;
+    }
+
+    .introWrap{
+      position:relative;
+      min-height: 320px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:flex-start;
+      gap:14px;
+      z-index:1;
+    }
+
+    .kicker{
+      display:inline-flex; align-items:center; gap:10px;
+      padding:8px 12px;
+      border-radius: 999px;
+      border:1px solid rgba(182,199,214,.20);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .interactiveTitle{
+      cursor:pointer;
+      user-select:none;
+      position:relative;
+      display:inline-block;
+      padding:6px 0;
+    }
+
+    .letters{
+      display:flex;
+      gap:10px;
+      align-items:flex-end;
+      font-family:"Playfair Display", ui-serif, Georgia, serif;
+      font-weight:700;
+      letter-spacing: 2px;
+      font-size: 92px;
+      line-height: .92;
+      color: var(--ice);
+      text-shadow: 0 18px 34px rgba(0,0,0,.35);
+    }
+    @media (max-width: 520px){ .letters{font-size:72px} }
+
+    .letters span{
+      display:inline-block;
+      will-change: transform, opacity, filter;
+      transform: translate3d(0,0,0) rotate(0deg);
+      opacity:1;
+      filter: blur(0px);
+    }
+
+    /* scatter directions */
+    .letters span:nth-child(1){ --tx:-150px; --ty:  90px; --rot:-18deg; }
+    .letters span:nth-child(2){ --tx:  90px; --ty:-130px; --rot: 22deg; }
+    .letters span:nth-child(3){ --tx:-70px;  --ty:-160px; --rot:-26deg; }
+    .letters span:nth-child(4){ --tx: 170px; --ty:  70px; --rot: 16deg; }
+
+    .interactiveTitle.scatter .letters span{
+      animation: scatter 720ms cubic-bezier(.15,.9,.15,1) forwards;
+    }
+    .interactiveTitle.scatter .letters span:nth-child(1){ animation-delay: 0ms; }
+    .interactiveTitle.scatter .letters span:nth-child(2){ animation-delay: 40ms; }
+    .interactiveTitle.scatter .letters span:nth-child(3){ animation-delay: 80ms; }
+    .interactiveTitle.scatter .letters span:nth-child(4){ animation-delay: 120ms; }
+
+    @keyframes scatter{
+      0%   { transform: translate3d(0,0,0) rotate(0deg) scale(1); opacity:1; filter: blur(0px); }
+      60%  { transform: translate3d(calc(var(--tx) * .75), calc(var(--ty) * .75), 0) rotate(calc(var(--rot) * .7)) scale(1.03); opacity:.9; filter: blur(.4px); }
+      100% { transform: translate3d(var(--tx), var(--ty), 0) rotate(var(--rot)) scale(.98); opacity:0; filter: blur(1.2px); }
+    }
+
+    .interactiveTitle.assemble .letters span{
+      animation: assemble 650ms cubic-bezier(.2,.9,.2,1) forwards;
+      opacity:0;
+    }
+    .interactiveTitle.assemble .letters span:nth-child(1){ animation-delay: 120ms; }
+    .interactiveTitle.assemble .letters span:nth-child(2){ animation-delay: 80ms; }
+    .interactiveTitle.assemble .letters span:nth-child(3){ animation-delay: 40ms; }
+    .interactiveTitle.assemble .letters span:nth-child(4){ animation-delay: 0ms; }
+
+    @keyframes assemble{
+      0%   { transform: translate3d(var(--tx), var(--ty), 0) rotate(var(--rot)) scale(.98); opacity:0; filter: blur(1.2px); }
+      70%  { transform: translate3d(calc(var(--tx) * .25), calc(var(--ty) * .25), 0) rotate(calc(var(--rot) * .2)) scale(1.02); opacity:.95; filter: blur(.3px); }
+      100% { transform: translate3d(0,0,0) rotate(0deg) scale(1); opacity:1; filter: blur(0px); }
+    }
+
+    .taglineBig{
+      margin-top: 14px;
+      font-family:"Playfair Display", ui-serif, Georgia, serif;
+      font-weight:600;
+      letter-spacing: .6px;
+      font-size: 46px;
+      line-height:1.0;
+      color: var(--ice);
+      opacity:0;
+      transform: translateY(-10px);
+      transition: opacity .35s ease, transform .55s ease;
+    }
+    @media (max-width: 520px){ .taglineBig{font-size:34px} }
+
+    .interactiveTitle.scatter + .taglineBig{
+      opacity:1;
+      transform: translateY(0);
+    }
+
+    .hintTouch{
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 2px;
+    }
+
+    .heroHeadline{
+      margin: 4px 0 0;
+      font-family:"Playfair Display", ui-serif, Georgia, serif;
+      font-size: clamp(2.25rem, 5vw, 4rem);
+      line-height: .98;
+      letter-spacing: -.02em;
+      max-width: 10ch;
+    }
+
+    .sub{
+      color: var(--muted);
+      font-size: 16px;
+      margin: 6px 0 0;
+      max-width: 56ch;
+    }
+
+    .socialProof{
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .ctaRow{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px}
+    .trustStrip{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+    .trustStrip span{
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid rgba(182,199,214,.16);
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .01em;
+    }
+
+    .miniGrid{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:12px;
+      margin-top:18px;
+    }
+    @media (max-width: 920px){ .miniGrid{grid-template-columns:1fr} }
+
+    .mini{
+      padding:14px;
+      border-radius: 16px;
+      border:1px solid rgba(182,199,214,.16);
+      background: rgba(255,255,255,.03);
+    }
+    .mini .t{font-weight:700; margin:0 0 6px}
+    .mini .d{margin:0; color:var(--muted); font-size:13px}
+
+    section{padding:18px 0}
+    .sectionHead{display:flex; align-items:flex-end; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px}
+    .sectionHead h3{
+      margin:0;
+      font-family:"Playfair Display", ui-serif, Georgia, serif;
+      font-size: 26px;
+      letter-spacing:.2px;
+    }
+    .sectionHead .hint{color:var(--muted); margin:0}
+
+    .twoCol{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    @media (max-width: 920px){ .twoCol{grid-template-columns:1fr} }
+    .pad{padding:20px}
+
+    ul{margin:10px 0 0; padding-left:18px; color:var(--muted)}
+    li{margin:7px 0}
+
+    .steps .step{
+      padding:16px;
+      border-radius: 16px;
+      border:1px solid rgba(182,199,214,.16);
+      background: rgba(255,255,255,.03);
+      margin-bottom:10px;
+    }
+    .steps .step b{color:var(--ice)}
+    .steps .step p{margin:6px 0 0; color:var(--muted)}
+
+    .videoBox{
+      aspect-ratio: 16/9;
+      width:100%;
+      border-radius: 16px;
+      border:1px solid rgba(182,199,214,.16);
+      background: rgba(255,255,255,.03);
+      overflow:hidden;
+    }
+    .videoBox iframe{width:100%; height:100%; border:0}
+
+    .pricingGrid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:12px;
+    }
+    @media (max-width: 920px){ .pricingGrid{grid-template-columns:1fr} }
+
+    .price{
+      padding:18px;
+      border-radius: 16px;
+      border:1px solid rgba(182,199,214,.16);
+      background: rgba(255,255,255,.03);
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .price:hover{transform: translateY(-2px); border-color: rgba(233,243,255,.22); background: rgba(255,255,255,.04)}
+    .price .name{font-weight:800}
+    .price .big{font-size:28px; margin:8px 0 8px; font-family:"Playfair Display", ui-serif}
+    .price .muted{color:var(--muted); margin:0 0 12px}
+
+    .kpis{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+    .kpi{
+      padding:10px 12px;
+      border-radius: 12px;
+      border:1px solid rgba(182,199,214,.16);
+      background: rgba(0,0,0,.14);
+      color: var(--ice);
+      font-size: 12px;
+    }
+
+    .formRow{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+    input{
+      flex: 1 1 240px;
+      padding:12px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(182,199,214,.20);
+      background: rgba(0,0,0,.14);
+      color: var(--ice);
+      outline:none;
+    }
+    input:focus{border-color: rgba(233,243,255,.35)}
+    .note{font-size:12px; color:var(--muted); margin-top:10px}
+    .success{color:#c6f2dd}
+
+    footer{
+      padding:30px 0 44px;
+      color:var(--muted);
+      font-size:12px;
+      border-top:1px solid var(--line);
+      margin-top: 18px;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .reveal{transition:none}
+      .interactiveTitle.scatter .letters span,
+      .interactiveTitle.assemble .letters span{animation:none; opacity:1; transform:none; filter:none;}
+      .taglineBig{transition:none}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="blob one"></div>
+  <div class="blob two"></div>
+  <div class="blob three"></div>
+
+  <header>
+    <div class="nav">
+      <div class="brand">
+        <div class="name">LOCL</div>
+        <div class="tag">live. like. a local.</div>
+      </div>
+
+      <div class="links">
+        <a href="#how">How it works</a>
+        <a href="#features">Features</a>
+        <a href="#video">Video</a>
+        <a href="#pricing">Pricing</a>
+        <a class="btn primary" href="#waitlist">Join waitlist</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- ✅ HERO: ONLY THIS CARD (NO RIGHT BOX ANYMORE) -->
+    <div class="hero" id="hero">
+      <div class="card heroLeft reveal">
+        <div class="introWrap">
+          <div class="kicker">✨ Your city, reintroduced</div>
+
+          <div class="interactiveTitle" id="interactiveTitle" aria-label="LOCL interactive title">
+            <div class="letters" id="letters">
+              <span>L</span><span>O</span><span>C</span><span>L</span>
+            </div>
+          </div>
+
+          <div class="taglineBig" id="taglineBig">live. like. a local.</div>
+          <div class="hintTouch">Hover (or tap) LOCL.</div>
+
+          <h1 class="heroHeadline">Discover cities like a local.</h1>
+
+          <p class="sub">
+            LOCL transforms city exploration into an immersive journey through
+            <b>AI-personalized itineraries</b> and <b>AR storytelling</b> — helping you uncover hidden cultural stories,
+            authentic local spots, and meaningful moments in real time.
+          </p>
+
+          <div class="ctaRow">
+            <a class="btn primary" href="#waitlist">Join the waitlist</a>
+            <a class="btn" href="#video">Watch the video</a>
+            <a class="btn" href="#pricing">Try pricing</a>
+          </div>
+
+          <p class="socialProof">Join <b>200+ explorers</b> already interested in experiencing cities through LOCL.</p>
+          <div class="trustStrip">
+            <span>AI-guided</span>
+            <span>AR storytelling</span>
+            <span>Local-first discovery</span>
+          </div>
+
+          <div class="miniGrid">
+            <div class="mini reveal">
+              <p class="t">Instant stories</p>
+              <p class="d">Scan a landmark — get context and history where you stand.</p>
+            </div>
+            <div class="mini reveal">
+              <p class="t">Personal paths</p>
+              <p class="d">Itineraries built for your vibe: culture, calm, nightlife, or all three.</p>
+            </div>
+            <div class="mini reveal">
+              <p class="t">FOMO solved</p>
+              <p class="d">Real-time alerts when you're near something worth knowing.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- EVERYTHING BELOW STAYS EXACTLY THE SAME -->
+    <section id="features">
+      <div class="sectionHead">
+        <h3 class="reveal">What you can do with LOCL</h3>
+        <p class="hint reveal">Designed for roaming. Built for meaning.</p>
+      </div>
+
+      <div class="twoCol">
+        <div class="card pad reveal">
+          <ul>
+            <li><b>AR Scan Stories:</b> point your camera at a monument and unlock the story behind it</li>
+            <li><b>AI Itineraries:</b> flexible paths shaped around your time, interests, and mood</li>
+            <li><b>Proximity Alerts:</b> real-time “don’t miss this” moments as you move</li>
+            <li><b>Street Preview:</b> explore a route before you commit</li>
+            <li><b>Rewards:</b> earn perks through local business partnerships</li>
+          </ul>
+        </div>
+
+        <div class="card pad reveal">
+          <h4 style="margin:0 0 10px; font-family:Playfair Display, ui-serif;">Why it feels different</h4>
+          <p style="margin:0; color:var(--muted)">
+            Most travel apps give you lists. LOCL gives you a living city.
+            It’s built for curiosity in motion — where friction kills discovery.
+          </p>
+          <p style="margin:14px 0 0; color:var(--muted); font-size:14px;">
+            Built from interview insights with Gen Z travelers and urban explorers across Europe.
+          </p>
+
+          <div class="kpis">
+            <div class="kpi">📍 Real-time discovery</div>
+            <div class="kpi">🏛️ Context & storytelling</div>
+            <div class="kpi">🧠 Personalization</div>
+            <div class="kpi">🎁 Local partnerships</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="sectionHead">
+        <h3 class="reveal">How it works</h3>
+        <p class="hint reveal">Three steps. No planning headache.</p>
+      </div>
+
+      <div class="twoCol">
+        <div class="card pad reveal steps">
+          <div class="step">
+            <b>1) Start roaming</b>
+            <p>Open LOCL and see nearby stories and “live like a local” paths.</p>
+          </div>
+          <div class="step">
+            <b>2) Scan & listen</b>
+            <p>Scan monuments for AR storytelling and immersive audio — instantly.</p>
+          </div>
+          <div class="step">
+            <b>3) Discover more</b>
+            <p>Get alerts and rewards — or match with guides for human local insight.</p>
+          </div>
+        </div>
+
+        <div class="card pad reveal">
+          <h4 style="margin:0 0 10px; font-family:Playfair Display, ui-serif;">Built for real behavior</h4>
+          <ul>
+            <li>Less searching mid-walk, more flow</li>
+            <li>Flexibility over rigid schedules</li>
+            <li>Authenticity over promotional content</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="video">
+      <div class="sectionHead">
+        <h3 class="reveal">Watch</h3>
+        <p class="hint reveal">A 60–90 second explainer turns curiosity into signups.</p>
+      </div>
+
+      <div class="card pad reveal">
+        <div class="videoBox">
+          <iframe
+            src=""
+            title="LOCL explainer video"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+        </div>
+        <p class="note">Replace the empty iframe src with your YouTube or Vimeo embed link before publishing.</p>
+      </div>
+    </section>
+
+    <section id="pricing">
+      <div class="sectionHead">
+        <h3 class="reveal">Pricing</h3>
+        <p class="hint reveal">Which plan would you choose? This helps us test willingness to pay.</p>
+      </div>
+
+      <div class="pricingGrid">
+        <div class="price reveal">
+          <div class="name">Free</div>
+          <div class="big">€0</div>
+          <p class="muted">Basic scans + limited itineraries</p>
+          <button class="btn" onclick="vote('Free')">I’d use Free</button>
+        </div>
+
+        <div class="price reveal" style="border-color: rgba(233,243,255,.22); background: rgba(233,243,255,.05);">
+          <div class="name">Premium</div>
+          <div class="big">€5.99/mo</div>
+          <p class="muted">Unlimited stories + offline + smarter itineraries</p>
+          <button class="btn primary" onclick="vote('Premium €5.99')">I’d pay €5.99</button>
+        </div>
+
+        <div class="price reveal">
+          <div class="name">Explorer+</div>
+          <div class="big">€9.99/mo</div>
+          <p class="muted">Priority guide matching + exclusive paths</p>
+          <button class="btn" onclick="vote('Explorer+ €9.99')">I’d pay €9.99</button>
+        </div>
+      </div>
+
+      <div class="card pad reveal" style="margin-top:12px">
+        <p style="margin:0; color:var(--muted)">
+          Live demo results (stored only in your browser). You can screenshot these results anytime.
+        </p>
+        <div class="kpis" id="results"></div>
+        <div class="formRow">
+          <button class="btn" onclick="resetVotes()">Reset</button>
+          <button class="btn" onclick="copyResults()">Copy results</button>
+        </div>
+        <p class="note" id="msg"></p>
+      </div>
+    </section>
+
+    <section id="waitlist">
+      <div class="sectionHead">
+        <h3 class="reveal">Join the waitlist</h3>
+        <p class="hint reveal">Get early access when LOCL launches in your city.</p>
+      </div>
+
+      <div class="card pad reveal">
+        <form class="formRow" onsubmit="joinWaitlist(event)">
+          <input id="email" type="email" placeholder="you@example.com" required />
+          <button class="btn primary" type="submit">Join</button>
+        </form>
+
+        <div class="kpis">
+          <div class="kpi">📩 Waitlist signups (demo): <span id="waitCount">0</span></div>
+          <div class="kpi">✅ Last signup: <span id="lastEmail">—</span></div>
+        </div>
+
+        <p class="note">
+          For real signups later: connect this to Tally, Google Forms, or Mailchimp.
+          For now, it stores signups locally so you can demo demand quickly in class.
+        </p>
+      </div>
+    </section>
+
+    <footer>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:space-between; align-items:center">
+        <div>
+          <b style="color:var(--ice)">LOCL</b> — live. like. a local.<br/>
+          <span>Team: Lina Mannai • Eva Papazova • Lotte De Boer</span>
+        </div>
+        <div>
+          Contact: <span style="color:var(--ice)">locl.team@gmail.com</span>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    // Scroll reveal
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{
+        if(e.isIntersecting) e.target.classList.add("show");
+      });
+    }, { threshold: 0.12 });
+    document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+
+    // Scatter + reassemble
+    const titleEl = document.getElementById("interactiveTitle");
+    const heroEl = document.getElementById("hero");
+
+    let scattered = false;
+    let cooldown = false;
+
+    function scatter(){
+      if (cooldown || scattered) return;
+      cooldown = true;
+      scattered = true;
+
+      titleEl.classList.remove("assemble");
+      void titleEl.offsetWidth;
+      titleEl.classList.add("scatter");
+
+      setTimeout(()=> cooldown = false, 900);
+    }
+
+    function reassemble(){
+      if (!scattered) return;
+      scattered = false;
+
+      titleEl.classList.remove("scatter");
+      titleEl.classList.remove("assemble");
+      void titleEl.offsetWidth;
+      titleEl.classList.add("assemble");
+
+      setTimeout(()=> titleEl.classList.remove("assemble"), 900);
+    }
+
+    titleEl.addEventListener("mouseenter", scatter);
+    titleEl.addEventListener("click", scatter);
+
+    // reassemble when scrolling back to hero
+    const heroIO = new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{
+        if(e.isIntersecting) reassemble();
+      });
+    }, { threshold: 0.7 });
+    heroIO.observe(heroEl);
+
+    // Currency tester
+    const voteKey = "locl_pricing_votes_v3";
+    const waitKey = "locl_waitlist_v3";
+
+    function getVotes(){
+      try { return JSON.parse(localStorage.getItem(voteKey)) || {}; }
+      catch { return {}; }
+    }
+    function setVotes(v){ localStorage.setItem(voteKey, JSON.stringify(v)); }
+
+    function vote(plan){
+      const v = getVotes();
+      v[plan] = (v[plan] || 0) + 1;
+      setVotes(v);
+      renderVotes();
+      flash(`Saved: ${plan}`);
+    }
+    function resetVotes(){
+      localStorage.removeItem(voteKey);
+      renderVotes();
+      flash("Reset pricing results.");
+    }
+    function renderVotes(){
+      const v = getVotes();
+      const plans = ["Free", "Premium €5.99", "Explorer+ €9.99"];
+      const el = document.getElementById("results");
+      el.innerHTML = "";
+
+      let total = 0;
+      plans.forEach(p => total += (v[p] || 0));
+
+      plans.forEach(p=>{
+        const count = v[p] || 0;
+        const pct = total ? Math.round((count/total)*100) : 0;
+        const div = document.createElement("div");
+        div.className = "kpi";
+        div.textContent = `${p}: ${count} (${pct}%)`;
+        el.appendChild(div);
+      });
+
+      const totalDiv = document.createElement("div");
+      totalDiv.className = "kpi";
+      totalDiv.textContent = `Total clicks: ${total}`;
+      el.appendChild(totalDiv);
+    }
+
+    function copyResults(){
+      const v = getVotes();
+      const text = "LOCL Pricing Interest Results\n" +
+        Object.entries(v).map(([k,val]) => `- ${k}: ${val}`).join("\n");
+      navigator.clipboard.writeText(text).then(()=> flash("Copied results."));
+    }
+
+    function flash(text){
+      const msg = document.getElementById("msg");
+      msg.textContent = text;
+      msg.className = "note success";
+      setTimeout(()=>{ msg.textContent=""; msg.className="note"; }, 2200);
+    }
+
+    // Waitlist demo
+    function getWaitlist(){
+      try { return JSON.parse(localStorage.getItem(waitKey)) || []; }
+      catch { return []; }
+    }
+    function setWaitlist(list){ localStorage.setItem(waitKey, JSON.stringify(list)); }
+
+    function joinWaitlist(e){
+      e.preventDefault();
+      const emailEl = document.getElementById("email");
+      const email = (emailEl.value || "").trim().toLowerCase();
+      const list = getWaitlist();
+      if (!list.includes(email)) list.push(email);
+      setWaitlist(list);
+      emailEl.value = "";
+      renderWaitlist();
+      flash("Added to waitlist.");
+    }
+
+    function renderWaitlist(){
+      const list = getWaitlist();
+      document.getElementById("waitCount").textContent = list.length;
+      document.getElementById("lastEmail").textContent = list.length ? list[list.length-1] : "—";
+    }
+
+    renderVotes();
+    renderWaitlist();
+  </script>
+</body>
+</html>
